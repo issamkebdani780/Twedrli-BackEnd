@@ -36,14 +36,31 @@ postrouter.get('/:id', async (req, res) => {
 
 postrouter.post('/', async (req, res) => {
     const { user_id, product_id, title, description } = req.body;
+
     try {
+        const [userRows] = await pool.query('SELECT id FROM users WHERE id = ?', [user_id]);
+        if (userRows.length === 0) {
+            return res.status(404).json({ error: `User with ID ${user_id} does not exist.` });
+        }
+
+        const [productRows] = await pool.query('SELECT id FROM products WHERE id = ?', [product_id]);
+        if (productRows.length === 0) {
+            return res.status(404).json({ error: `Product with ID ${product_id} does not exist.` });
+        }
+
         const [result] = await pool.query(
             'INSERT INTO posts (user_id, product_id, title, description) VALUES (?, ?, ?, ?);', 
             [user_id, product_id, title, description]
         );
-        res.status(201).json({ message: "Post created", postId: result.insertId });
-    } catch(err){
-        res.status(500).json({ error: err.message });
+
+        res.status(201).json({ 
+            message: "Post created successfully", 
+            postId: result.insertId 
+        });
+
+    } catch (err) {
+        console.error('Error creating post:', err);
+        res.status(500).json({ error: 'Internal Server Error', details: err.message });
     }
 });
 
