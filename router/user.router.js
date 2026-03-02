@@ -39,10 +39,26 @@ userrouter.post('/', async (req, res) => {
 
 userrouter.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, email, avatar, role, department, status, joined } = req.body;
-    try{
-        const result = await pool.query('UPDATE users SET name = ?, email = ?, avatar = ?, role = ?, department = ?, status = ?, joined = ? WHERE id = ?;', [name, email, avatar, role, department, status, joined, id]);
-        res.json({ message: "User updated successfully", result });
+    try {
+        const [existingRows] = await pool.query('SELECT * FROM users WHERE id = ?;', [id]);
+        if (existingRows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const existing = existingRows[0];
+        const {
+            name = existing.name,
+            email = existing.email,
+            avatar = existing.avatar,
+            role = existing.role,
+            department = existing.department,
+            status = existing.status,
+            joined = existing.joined,
+        } = req.body;
+        await pool.query('UPDATE users SET name = ?, email = ?, avatar = ?, role = ?, department = ?, status = ?, joined = ? WHERE id = ?;', [
+            name, email, avatar, role, department, status, joined, id
+        ]);
+        const [updatedRows] = await pool.query('SELECT * FROM users WHERE id = ?;', [id]);
+        res.json({ message: "User updated successfully", user: updatedRows[0] });
     } catch(err){
         console.error('Error updating user:', err);
         res.status(500).json({ error: 'Internal Server Error' });
