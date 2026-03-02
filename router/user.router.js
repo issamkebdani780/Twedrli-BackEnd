@@ -29,7 +29,7 @@ userrouter.get('/:id', async (req, res) => {
 userrouter.post('/', async (req, res) => {
     const { name, email, avatar, role, department, status, joined } = req.body;
     try {
-        const result = await pool.query('INSERT INTO users (name, email, avatar, role, department, status, joined) VALUES (?, ?, ?, ?, ?, ?, ?);', [name, email, avatar, role, department, status, joined]);
+        const [result] = await pool.query('INSERT INTO users (name, email, avatar, role, department, status, joined) VALUES (?, ?, ?, ?, ?, ?, ?);', [name, email, avatar, role, department, status, joined]);
         res.status(201).json({ message: "User added successfully", result });
     } catch(err){
         console.error('Error adding user:', err);
@@ -54,7 +54,7 @@ userrouter.put('/:id', async (req, res) => {
             status = existing.status,
             joined = existing.joined,
         } = req.body;
-        await pool.query('UPDATE users SET name = ?, email = ?, avatar = ?, role = ?, department = ?, status = ?, joined = ? WHERE id = ?;', [
+        const [updateResult] = await pool.query('UPDATE users SET name = ?, email = ?, avatar = ?, role = ?, department = ?, status = ?, joined = ? WHERE id = ?;', [
             name, email, avatar, role, department, status, joined, id
         ]);
         const [updatedRows] = await pool.query('SELECT * FROM users WHERE id = ?;', [id]);
