@@ -4,18 +4,26 @@ const postrouter = Router();
 
 postrouter.get('/', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM posts;');
+        const query = `select * from posts;`;
+        const [rows] = await pool.query(query);
         res.json(rows);
     } catch (err) {
-        console.error('Error fetching posts:', err);
         res.status(500).json({ error: 'Internal Server Error' });
-    }
-})
+    } 
+});
 
 postrouter.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await pool.query('SELECT * FROM posts WHERE id = ?;', [id]);
+        const query = `
+            SELECT posts.*, users.name as author_name, products.title as product_title
+            FROM posts
+            JOIN users ON posts.user_id = users.id
+            JOIN products ON posts.product_id = products.id
+            WHERE posts.id = ?;
+        `;
+        const [rows] = await pool.query(query, [id]);
+
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Post not found' });
         }
@@ -24,58 +32,58 @@ postrouter.get('/:id', async (req, res) => {
         console.error('Error fetching post:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-})
+});
 
 postrouter.post('/', async (req, res) => {
-    const { user_id, product_id, title, description, created_at } = req.body;
+    const { user_id, product_id, title, description } = req.body;
     try {
-        const result = await pool.query('INSERT INTO posts (user_id, product_id, title, description, created_at) VALUES (?, ?, ?, ?, ?);', [user_id, product_id, title, description, created_at]);
-        res.status(201).json({ message: "Post added successfully", result });
+        const [result] = await pool.query(
+            'INSERT INTO posts (user_id, product_id, title, description) VALUES (?, ?, ?, ?);', 
+            [user_id, product_id, title, description]
+        );
+        res.status(201).json({ message: "Post created", postId: result.insertId });
     } catch(err){
-        console.error('Error adding post:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ error: err.message });
     }
-})
+});
 
 postrouter.put('/:id', async (req, res) => {
     const { id } = req.params;
-    // allow partial updates by merging with existing row
-    try {
-        const [existingRows] = await pool.query('SELECT * FROM posts WHERE id = ?;', [id]);
-        if (existingRows.length === 0) {
-            return res.status(404).json({ error: 'Post not found' });
-        }
-        const existing = existingRows[0];
-        const {
-            user_id = existing.user_id,
-            product_id = existing.product_id,
-            title = existing.title,
-            description = existing.description,
-            created_at = existing.created_at,
-        } = req.body;
+    const { title, description } = req.body;
 
-        await pool.query(
-            'UPDATE posts SET user_id = ?, product_id = ?, title = ?, description = ?, created_at = ? WHERE id = ?;',[
-                user_id, product_id, title, description, created_at, id
-            ]
-        );
-        const [updatedRows] = await pool.query('SELECT * FROM posts WHERE id = ?;', [id]);
-        res.json({ message: "Post updated successfully", post: updatedRows[0] });
-    } catch(err){
+    try {
+        const sql = `
+            UPDATE posts 
+            SET 
+                title = COALESCE(?, title), 
+                description = COALESCE(?, description)
+            WHERE id = ?;
+        `;
+        const [result] = await pool.query(sql, [title || null, description || null, id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Post not found or no changes made' });
+        }
+        res.json({ message: "Post updated successfully" });
+    } catch (err) {
         console.error('Error updating post:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-})
+});
 
 postrouter.delete('/:id', async (req, res) => {
     const { id } = req.params;
-    try{
-        const result = await pool.query('DELETE FROM posts WHERE id = ?;', [id]);
-        res.json({ message: "Post deleted successfully", result });
-    } catch(err){
+    try {
+        const [result] = await pool.query('DELETE FROM posts WHERE id = ?;', [id]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        res.json({ message: "Post deleted successfully" });
+    } catch (err) {
         console.error('Error deleting post:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-})
+});
 
 export default postrouter;

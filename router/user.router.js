@@ -4,76 +4,85 @@ const userrouter = Router();
 
 userrouter.get('/', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM users;');
+        const [rows] = await pool.query('SELECT id, name, email, role, department, created_at FROM users;');
         res.json(rows);
     } catch (err) {
-        console.error('Error fetching users:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-})
-
-userrouter.get('/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const [rows] = await pool.query('SELECT * FROM users WHERE id = ?;', [id]);
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json(rows[0]);
-    } catch (err) {
-        console.error('Error fetching user:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-})
+});
 
 userrouter.post('/', async (req, res) => {
-    const { name, email, avatar, role, department, status, joined } = req.body;
+    const { name, email, password, role, department } = req.body;
     try {
-        const [result] = await pool.query('INSERT INTO users (name, email, avatar, role, department, status, joined) VALUES (?, ?, ?, ?, ?, ?, ?);', [name, email, avatar, role, department, status, joined]);
-        res.status(201).json({ message: "User added successfully", result });
+        const [result] = await pool.query(
+            'INSERT INTO users (name, email, password, role, department) VALUES (?, ?, ?, ?, ?);', 
+            [name, email, password, role || 'user', department]
+        );
+        res.status(201).json({ message: "User created", userId: result.insertId });
     } catch(err){
-        console.error('Error adding user:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ error: err.message });
     }
-})
+});
 
 userrouter.put('/:id', async (req, res) => {
     const { id } = req.params;
+    const { name, email, role, department } = req.body;
     try {
-        const [existingRows] = await pool.query('SELECT * FROM users WHERE id = ?;', [id]);
-        if (existingRows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        const existing = existingRows[0];
-        const {
-            name = existing.name,
-            email = existing.email,
-            avatar = existing.avatar,
-            role = existing.role,
-            department = existing.department,
-            status = existing.status,
-            joined = existing.joined,
-        } = req.body;
-        const [updateResult] = await pool.query('UPDATE users SET name = ?, email = ?, avatar = ?, role = ?, department = ?, status = ?, joined = ? WHERE id = ?;', [
-            name, email, avatar, role, department, status, joined, id
-        ]);
-        const [updatedRows] = await pool.query('SELECT * FROM users WHERE id = ?;', [id]);
-        res.json({ message: "User updated successfully", user: updatedRows[0] });
+        await pool.query(
+            'UPDATE users SET name = COALESCE(?, name), email = COALESCE(?, email), role = COALESCE(?, role), department = COALESCE(?, department) WHERE id = ?;', 
+            [name, email, role, department, id]
+        );
+        res.json({ message: "User updated successfully" });
     } catch(err){
-        console.error('Error updating user:', err);
+        res.status(500).json({ error: 'Update failed' });
+    }
+});
+
+userrouter.get('/email/:email', async (req, res) => {
+    const { email } = req.params;
+    try {
+        const [rows] = await pool.query(
+            'SELECT id, name, email, role, department, created_at FROM users WHERE email = ?;', 
+            [email]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'User not found with this email' });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error('Error fetching user by email:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-})
+});
 
 userrouter.delete('/:id', async (req, res) => {
     const { id } = req.params;
-    try{
-        const result = await pool.query('DELETE FROM users WHERE id = ?;', [id]);
-        res.json({ message: "User deleted successfully", result });
-    } catch(err){
+    try {
+        const [user] = await pool.query('SELECT id FROM users WHERE id = ?;', [id]);
+        
+        if (user.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await pool.query('DELETE FROM users WHERE id = ?;', [id]);
+
+        res.json({ 
+            message: "User deleted successfully",
+            deletedId: id 
+        });
+    } catch (err) {
         console.error('Error deleting user:', err);
+        
+        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({ 
+                error: 'Cannot delete user: This user has active posts or products linked to them.' 
+            });
+        }
+        
         res.status(500).json({ error: 'Internal Server Error' });
     }
-})
+});
 
 export default userrouter;

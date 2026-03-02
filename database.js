@@ -1,4 +1,4 @@
-import mysql2 from 'mysql2'
+import mysql2 from 'mysql2';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,9 +8,11 @@ const pool = mysql2.createPool({
     user: process.env.MYSQLUSER,
     database: process.env.MYSQLDATABASE,
     password: process.env.MYSQLPASSWORD,
-    port: process.env.MYSQLPORT
-})
+    port: process.env.MYSQLPORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
-// Export promise-based pool so callers can use async/await
 const promisePool = pool.promise();
 export default promisePool;
