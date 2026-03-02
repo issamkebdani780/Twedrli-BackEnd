@@ -95,17 +95,35 @@ postrouter.post('/', async (req, res) => {
 
 postrouter.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, description, user_id, product_id } = req.body;
 
     try {
+        // Validate user_id if provided
+        if (user_id) {
+            const [userRows] = await pool.query('SELECT id FROM users WHERE id = ?', [user_id]);
+            if (userRows.length === 0) {
+                return res.status(404).json({ error: `User with ID ${user_id} does not exist.` });
+            }
+        }
+
+        // Validate product_id if provided
+        if (product_id) {
+            const [productRows] = await pool.query('SELECT id FROM products WHERE id = ?', [product_id]);
+            if (productRows.length === 0) {
+                return res.status(404).json({ error: `Product with ID ${product_id} does not exist.` });
+            }
+        }
+
         const sql = `
             UPDATE posts 
             SET 
                 title = COALESCE(?, title), 
-                description = COALESCE(?, description)
+                description = COALESCE(?, description),
+                user_id = COALESCE(?, user_id),
+                product_id = COALESCE(?, product_id)
             WHERE id = ?;
         `;
-        const [result] = await pool.query(sql, [title || null, description || null, id]);
+        const [result] = await pool.query(sql, [title || null, description || null, user_id || null, product_id || null, id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Post not found or no changes made' });
