@@ -4,10 +4,39 @@ const postrouter = Router();
 
 postrouter.get('/', async (req, res) => {
     try {
-        const query = `select * from posts;`;
+        const query = `
+            SELECT 
+                p.id, p.title, p.description, p.created_at,
+                u.name as user_name, u.email as user_email,
+                pr.category, pr.status, pr.location, pr.date as product_date
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            JOIN products pr ON p.product_id = pr.id;
+        `;
         const [rows] = await pool.query(query);
-        res.json(rows);
+        
+        const formattedData = rows.map(row => ({
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            created_at: row.created_at,
+            user: {
+                name: row.user_name,
+                email: row.user_email,
+                avatar: row.user_name ? row.user_name.charAt(0).toUpperCase() : 'U'
+            },
+            product: {
+                category: row.category,
+                status: row.status,
+                location: row.location,
+                // Fallback image since the column doesn't exist in your DB
+                img: 'https://via.placeholder.com/300?text=No+Image' 
+            }
+        }));
+
+        res.json(formattedData);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: 'Internal Server Error' });
     } 
 });
