@@ -3,6 +3,7 @@ import cors from 'cors';
 import productrouter from './router/product.router.js';
 import userrouter from './router/user.router.js';
 import postrouter from './router/post.router.js';
+import authRouter from './router/auth.router.js';
 
 const port = process.env.PORT || 3000;
 const App = express();
@@ -13,6 +14,7 @@ App.use(express.json());
 App.use('/products', productrouter);
 App.use('/users', userrouter);
 App.use('/posts', postrouter);
+App.use('/auth', authRouter);
 
 App.get('/', (req, res) => {
     res.send('welcome to twedrli')
