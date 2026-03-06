@@ -7,7 +7,7 @@ const authRouter = Router();
 
 // Signup Route
 authRouter.post('/signup', async (req, res) => {
-    const { name, email, password, department } = req.body;
+    const { name, email, password, role, department } = req.body;
 
     if (!name || !email || !password || !department) {
         return res.status(400).json({ error: "Missing required fields: name, email, password, and department are required." });
@@ -35,8 +35,8 @@ authRouter.post('/signup', async (req, res) => {
             userId: result.insertId
         });
     } catch (err) {
-        console.error("Signup error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("Signup error detail:", err);
+        res.status(500).json({ error: "Internal Server Error", message: err.message });
     }
 });
 
