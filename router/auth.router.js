@@ -2,7 +2,7 @@ import { Router } from "express";
 import pool from "../database.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-
+//test
 const authRouter = Router();
 
 // Signup Route
