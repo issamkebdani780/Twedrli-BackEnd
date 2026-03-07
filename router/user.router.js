@@ -5,7 +5,7 @@ const userrouter = Router();
 
 userrouter.get('/', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT id, name, email, role, department, created_at FROM users;');
+        const [rows] = await pool.query('SELECT id, name, email, role, department, created_at, img_url FROM users;');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: 'Internal Server Error' });
@@ -13,13 +13,13 @@ userrouter.get('/', async (req, res) => {
 });
 
 userrouter.post('/', async (req, res) => {
-    const { name, email, password, role, department } = req.body;
+    const { name, email, password, role, department, img_url } = req.body;
     try {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const [result] = await pool.query(
-            'INSERT INTO users (name, email, password, role, department) VALUES (?, ?, ?, ?, ?);',
-            [name, email, hashedPassword, role || 'user', department]
+            'INSERT INTO users (name, email, password, role, department, img_url) VALUES (?, ?, ?, ?, ?, ?);',
+            [name, email, hashedPassword, role || 'user', department, img_url]
         );
         res.status(201).json({ message: "User created", userId: result.insertId });
     } catch (err) {
@@ -29,11 +29,11 @@ userrouter.post('/', async (req, res) => {
 
 userrouter.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, email, role, department } = req.body;
+    const { name, email, role, department, img_url } = req.body;
     try {
         await pool.query(
-            'UPDATE users SET name = COALESCE(?, name), email = COALESCE(?, email), role = COALESCE(?, role), department = COALESCE(?, department) WHERE id = ?;',
-            [name, email, role, department, id]
+            'UPDATE users SET name = COALESCE(?, name), email = COALESCE(?, email), role = COALESCE(?, role), department = COALESCE(?, department),  img_url= COALESCE(?, img_url)  WHERE id = ?;',
+            [name, email, role, department, img_url, id]
         );
         res.json({ message: "User updated successfully" });
     } catch (err) {
@@ -45,7 +45,7 @@ userrouter.get('/email/:email', async (req, res) => {
     const { email } = req.params;
     try {
         const [rows] = await pool.query(
-            'SELECT id, name, email, role, department, created_at FROM users WHERE email = ?;',
+            'SELECT id, name, email, role, department, img_url, created_at FROM users WHERE email = ?;',
             [email]
         );
 
